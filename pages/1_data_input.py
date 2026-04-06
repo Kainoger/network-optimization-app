@@ -14,16 +14,13 @@ st.set_page_config(
 # --- 2. GLOBAL SIDEBAR LOCK (NON-CLICKABLE NAVIGATION) ---
 st.markdown("""
     <style>
-        /* Disables all clicks on the default sidebar navigation */
         [data-testid="stSidebarNav"] {
             pointer-events: none;
             cursor: default;
         }
-        /* Visual styling to show it's a progress tracker */
         [data-testid="stSidebarNav"] ul {
             opacity: 0.7;
         }
-        /* Highlight the current page */
         [data-testid="stSidebarNav"] a[aria-current="page"] {
             opacity: 1 !important;
             font-weight: bold;
@@ -92,7 +89,6 @@ st.divider()
 def handle_customer_upload():
     if st.session_state.cust_uploader_key:
         df = pd.read_excel(st.session_state.cust_uploader_key)
-        # Pre-process numeric columns to prevent editor crashes
         for col in ['Demand_Qty', 'Latitude', 'Longitude']:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
@@ -102,7 +98,8 @@ def handle_customer_upload():
 def handle_fleet_upload():
     if st.session_state.fleet_uploader_key:
         df = pd.read_excel(st.session_state.fleet_uploader_key)
-        df['Driver_ID'] = df['Driver_ID'].astype(str).str.replace(r'\.0$', '', regex=True)
+        if 'Driver_ID' in df.columns:
+            df['Driver_ID'] = df['Driver_ID'].astype(str).str.replace(r'\.0$', '', regex=True)
         for col in ['Capacity', 'Cost_per_km']:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
@@ -126,12 +123,14 @@ depot_mode = st.radio("Depot Input Method:", ["Direct Coordinates", "Google Maps
 if depot_mode == "Direct Coordinates":
     col_lat, col_lon = st.columns(2)
     with col_lat:
+        lat_val = st.session_state['depot_data']['Latitude']
         lat_in = st.text_input("Depot Latitude", 
-                               value=str(st.session_state['depot_data']['Latitude']) if st.session_state['depot_data']['Latitude'] else "",
+                               value=str(lat_val) if lat_val is not None else "",
                                placeholder="e.g. 10.7717")
     with col_lon:
+        lon_val = st.session_state['depot_data']['Longitude']
         lon_in = st.text_input("Depot Longitude", 
-                               value=str(st.session_state['depot_data']['Longitude']) if st.session_state['depot_data']['Longitude'] else "",
+                               value=str(lon_val) if lon_val is not None else "",
                                placeholder="e.g. 106.7042")
     if lat_in and lon_in:
         try:
@@ -139,8 +138,8 @@ if depot_mode == "Direct Coordinates":
         except: pass
 
 else:
-    st.caption("Paste the full Google Maps URL (e.g. https://www.google.com/maps/@10.7...)")
-    maps_url = st.text_input("Paste Google Maps URL")
+    st.caption("Paste the full Google Maps URL")
+    maps_url = st.text_input("Paste Google Maps URL", placeholder="https://www.google.com/maps/place/...")
     if maps_url:
         match = re.search(r'@([-+]?\d+\.\d+),([-+]?\d+\.\d+)', maps_url)
         if match:
@@ -189,31 +188,35 @@ st.session_state['fleet_config'] = st.data_editor(
 st.divider()
 if st.button("Proceed to Validation →", type="primary", use_container_width=True):
     d = st.session_state['depot_data']
-    c = st.session_state['delivery_data']
-    f = st.session_state['fleet_config']
+    c = st.session_state['delivery_data'].copy()
+    f = st.session_state['fleet_config'].copy()
     
-    # Check for empty values
     if not d['Latitude'] or not d['Longitude']:
         st.error("❌ Depot coordinates are missing.")
-    elif c.empty or c.isnull().values.any():
-        st.error("❌ Customer table is incomplete (Check for empty cells).")
-    elif f.empty or f.isnull().values.any():
-        st.error("❌ Fleet table is incomplete (Check for empty cells).")
+    elif c.empty:
+        st.error("❌ Customer table is empty.")
+    elif f.empty:
+        st.error("❌ Fleet table is empty.")
     else:
         try:
-            # HARD NUMERIC VALIDATION
-            pd.to_numeric(c['Demand_Qty'])
-            pd.to_numeric(c['Latitude'])
-            pd.to_numeric(c['Longitude'])
-            pd.to_numeric(f['Capacity'])
-            pd.to_numeric(f['Cost_per_km'])
+            # Bulletproof numeric cleaning before page switch
+            c['Demand_Qty'] = pd.to_numeric(c['Demand_Qty'], errors='coerce').fillna(0)
+            c['Latitude'] = pd.to_numeric(c['Latitude'], errors='coerce').fillna(0)
+            c['Longitude'] = pd.to_numeric(c['Longitude'], errors='coerce').fillna(0)
+            f['Capacity'] = pd.to_numeric(f['Capacity'], errors='coerce').fillna(0)
+            f['Cost_per_km'] = pd.to_numeric(f['Cost_per_km'], errors='coerce').fillna(0)
             
-            st.success("✅ All data validated!")
-            # Updated to match your new lowercase filename
-            st.switch_page("pages/validation.py")
-            
-        except Exception:
-            st.error("❌ Format error: Coordinates, Demand, and Capacity must be numbers.")
+            # Re-check for nulls that coerce couldn't handle
+            if c.isnull().values.any() or f.isnull().values.any():
+                st.error("❌ Format error: Please ensure all numeric cells contain numbers.")
+            else:
+                st.session_state['delivery_data'] = c
+                st.session_state['fleet_config'] = f
+                st.success("✅ All data validated!")
+                st.switch_page("pages/2_validation.py")
+                
+        except Exception as e:
+            st.error(f"❌ Processing error: {e}")
 
 if st.button("Reset All Data"):
     st.session_state.clear()
