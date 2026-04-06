@@ -59,15 +59,24 @@ def login_screen():
                     st.error("Please enter credentials to proceed.")
 
         with tab2:
-            st.info("ℹ️ **System Architecture Note**")
+            st.info("🔐 **Access & Registration Policy**")
             st.markdown("""
-            Account registration is currently managed by the System Administrator. 
+            ### Why is self-registration disabled?
+            To maintain the integrity of the logistics network and ensure data security, this portal does not currently support public account creation. 
             
-            **Project Scope:**
-            This portal is a **Proof of Concept (PoC)** designed to demonstrate automated route optimization for supply chain networks. 
-            By centralizing logistics data into a digital twin, we reduce manual planning errors and optimize vehicle utilization.
-            
-            *To explore the interface, please use any email/password in the **Login** tab.*
+            **Key Reasons for Manual Management:**
+            1.  **Corporate Security:** This tool handles sensitive supply chain data, including warehouse locations, customer coordinates, and fleet cost structures. Access is restricted to authorized personnel only.
+            2.  **Data Governance:** To ensure the "Digital Twin" remains accurate, user profiles must be mapped to specific regional logistics clusters by the System Administrator.
+            3.  **Resource Allocation:** Optimization solvers require significant computational power. Manual onboarding allows us to manage server load effectively during this phase.
+
+            **Project Scope & Proof of Concept (PoC):**
+            This portal is a specialized digital tool designed to demonstrate **automated route optimization**. By centralizing fragmented logistics data into a single digital environment, we aim to:
+            * Eliminate manual planning errors prevalent in traditional Excel-based workflows.
+            * Drastically reduce "Empty Miles" and improve overall vehicle utilization.
+            * Enable data-driven decision-making for Business Development and Supply Chain Excellence.
+
+            ---
+            💡 **Guest Access:** To explore the features and the optimization engine, you may use **any email and password** in the **Login** tab for this demonstration version.
             """)
 
     add_signature()
